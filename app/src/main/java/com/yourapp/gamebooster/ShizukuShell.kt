@@ -28,13 +28,13 @@ class ShizukuShell(private val context: Context) {
             process.waitFor()
             if (process.exitValue() != 0) {
                 handler.post {
-                    Toast.makeText(context, "Lỗi: $command", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Lỗi thực thi: $command", Toast.LENGTH_SHORT).show()
                 }
             }
             process.exitValue() == 0
         } catch (e: IOException) {
             handler.post {
-                Toast.makeText(context, "Không thể chạy lệnh: $command", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Không thể chạy lệnh", Toast.LENGTH_SHORT).show()
             }
             false
         }
@@ -43,10 +43,11 @@ class ShizukuShell(private val context: Context) {
     fun execCommands(commands: List<String>) {
         Thread {
             for (cmd in commands) {
-                if (!execOrToast(cmd)) {
-                    // tiếp tục
-                }
+                execOrToast(cmd)
                 Thread.sleep(50)
+            }
+            handler.post {
+                Toast.makeText(context, "Đã áp dụng tối ưu!", Toast.LENGTH_SHORT).show()
             }
         }.start()
     }
