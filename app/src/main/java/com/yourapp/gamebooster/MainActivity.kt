@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Ánh xạ
+        // Ánh xạ view
         tvShizukuStatus = findViewById(R.id.tv_shizuku_status)
         tvDeviceName = findViewById(R.id.tv_device_name)
         tvDeviceModel = findViewById(R.id.tv_device_model)
@@ -51,18 +51,21 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
         tvAndroidVersion.text = "Android: ${DeviceInfo.getAndroidVersion()}"
         tvVulkan.text = "Vulkan: ${if (DeviceInfo.isVulkanSupported(this)) "✅ Hỗ trợ" else "❌ Không hỗ trợ"}"
 
-        // Yêu cầu quyền overlay nếu cần
+        // Yêu cầu quyền overlay
         checkOverlayPermission()
 
         // Đăng ký listener Shizuku
         Shizuku.addRequestPermissionResultListener(this)
 
-        // Kiểm tra trạng thái Shizuku
-        updateShizukuStatus()
+        // Vô hiệu hóa nút cho đến khi Shizuku sẵn sàng
+        setButtonsEnabled(false)
 
         // Nút Game Booster
         btnGameBooster.setOnClickListener {
-            if (!ensureShizukuReady()) return@setOnClickListener
+            if (!isShizukuReady()) {
+                requestShizuku()
+                return@setOnClickListener
+            }
             gameBoosterActive = !gameBoosterActive
             if (gameBoosterActive) {
                 runGameBooster()
@@ -75,7 +78,10 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
 
         // Nút Touch Latency
         btnTouchLatency.setOnClickListener {
-            if (!ensureShizukuReady()) return@setOnClickListener
+            if (!isShizukuReady()) {
+                requestShizuku()
+                return@setOnClickListener
+            }
             touchLatencyActive = !touchLatencyActive
             if (touchLatencyActive) {
                 runTouchLatencyReduction()
@@ -86,26 +92,21 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
                 Toast.makeText(this, "Đã khôi phục màn hình", Toast.LENGTH_SHORT).show()
             }
         }
+
+        // Cập nhật trạng thái Shizuku
+        updateShizukuStatus()
     }
 
-    private fun ensureShizukuReady(): Boolean {
-        if (!Shizuku.pingBinder()) {
-            Toast.makeText(this, "Shizuku chưa chạy! Hãy khởi động Shizuku.", Toast.LENGTH_LONG).show()
-            return false
-        }
-        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(0)
-            Toast.makeText(this, "Đang yêu cầu quyền Shizuku...", Toast.LENGTH_SHORT).show()
-            return false
-        }
-        return true
+    override fun onResume() {
+        super.onResume()
+        updateShizukuStatus()
     }
 
     private fun checkOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             AlertDialog.Builder(this)
                 .setTitle("Cần quyền hiển thị")
-                .setMessage("Ứng dụng cần quyền hiển thị trên ứng dụng khác.")
+                .setMessage("Ứng dụng cần quyền hiển thị trên ứng dụng khác để hiển thị thông báo Dynamic Island (tùy chọn).")
                 .setPositiveButton("Cấp quyền") { _, _ ->
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                 }
@@ -114,13 +115,43 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
         }
     }
 
-    private fun updateShizukuStatus() {
+    private fun isShizukuReady(): Boolean {
+        return Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestShizuku() {
         if (!Shizuku.pingBinder()) {
-            tvShizukuStatus.text = "Shizuku: Chưa chạy"
-        } else if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Shizuku chưa chạy. Hãy mở ứng dụng Shizuku và khởi động.", Toast.LENGTH_LONG).show()
+        } else if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(0)
+        }
+    }
+
+    private fun setButtonsEnabled(enabled: Boolean) {
+        btnGameBooster.isEnabled = enabled
+        btnTouchLatency.isEnabled = enabled
+        btnGameBooster.alpha = if (enabled) 1.0f else 0.5f
+        btnTouchLatency.alpha = if (enabled) 1.0f else 0.5f
+    }
+
+    private fun updateShizukuStatus() {
+        val ready = isShizukuReady()
+        if (ready) {
             tvShizukuStatus.text = "Shizuku: ✅ Đã kết nối"
+            setButtonsEnabled(true)
         } else {
-            tvShizukuStatus.text = "Shizuku: Cần cấp quyền"
+            tvShizukuStatus.text = if (!Shizuku.pingBinder()) "Shizuku: ❌ Chưa chạy" else "Shizuku: 🔒 Cần cấp quyền"
+            setButtonsEnabled(false)
+            // Nếu đang bật chức năng, tắt đi
+            if (gameBoosterActive) {
+                gameBoosterActive = false
+                btnGameBooster.text = "GAME\nBOOSTER"
+            }
+            if (touchLatencyActive) {
+                restoreOriginal()
+                touchLatencyActive = false
+                btnTouchLatency.text = "TOUCH\nLATENCY"
+            }
         }
     }
 
@@ -142,8 +173,8 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
     }
 
     private fun runTouchLatencyReduction() {
-        val sizeOut = execShell("wm size")
-        val densityOut = execShell("wm density")
+        val sizeOut = shell.exec("wm size")
+        val densityOut = shell.exec("wm density")
         if (sizeOut.isEmpty() || densityOut.isEmpty()) {
             Toast.makeText(this, "Không thể lấy thông tin màn hình", Toast.LENGTH_SHORT).show()
             touchLatencyActive = false
@@ -166,11 +197,10 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
         val targetHeight = target.second
         val targetDensity = (originalDensity * targetHeight.toFloat() / originalHeight).toInt()
 
-        execShell("wm size ${targetWidth}x${targetHeight}")
-        execShell("wm density $targetDensity")
+        shell.exec("wm size ${targetWidth}x${targetHeight}")
+        shell.exec("wm density $targetDensity")
         Toast.makeText(this, "Độ phân giải: ${targetWidth}x${targetHeight}", Toast.LENGTH_LONG).show()
 
-        // Tự động hỏi hoàn tác sau 10 giây
         Executors.newSingleThreadExecutor().submit {
             Thread.sleep(10000)
             runOnUiThread {
@@ -190,22 +220,8 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
 
     private fun restoreOriginal() {
         if (originalWidth > 0 && originalHeight > 0) {
-            execShell("wm size ${originalWidth}x${originalHeight}")
-            execShell("wm density $originalDensity")
-        }
-    }
-
-    private fun execShell(cmd: String): String {
-        if (!Shizuku.pingBinder()) return ""
-        return try {
-            val process = Shizuku.newProcess(arrayOf("sh", "-c", cmd), null, null)
-            val reader = process.inputStream.bufferedReader()
-            val output = reader.readText()
-            process.waitFor()
-            output.trim()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            ""
+            shell.exec("wm size ${originalWidth}x${originalHeight}")
+            shell.exec("wm density $originalDensity")
         }
     }
 
@@ -233,8 +249,8 @@ class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListe
     }
 
     private fun testResolution(w: Int, h: Int): Boolean {
-        execShell("wm size ${w}x${h}")
-        return execShell("wm size").contains("${w}x${h}")
+        shell.exec("wm size ${w}x${h}")
+        return shell.exec("wm size").contains("${w}x${h}")
     }
 
     override fun onDestroy() {
