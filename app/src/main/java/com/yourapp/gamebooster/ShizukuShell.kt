@@ -14,8 +14,12 @@ class ShizukuShell(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
 
     private fun isShizukuReady(): Boolean {
-        return Shizuku.pingBinder() &&
-                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        return try {
+            Shizuku.pingBinder() &&
+                    Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun exec(command: String): String {
@@ -33,29 +37,32 @@ class ShizukuShell(private val context: Context) {
 
     fun execOrToast(command: String): Boolean {
         if (!isShizukuReady()) {
-            showToast("Shizuku chưa sẵn sàng")
+            showToast("Shizuku chưa sẵn sàng hoặc thiếu quyền")
             return false
         }
         return try {
             val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
             val exitCode = process.waitFor()
             if (exitCode != 0) {
-                showToast("Lệnh thất bại: $command")
+                showToast("Lệnh lỗi hoặc không tương thích: $command")
             }
             exitCode == 0
         } catch (e: Exception) {
-            showToast("Lỗi thực thi lệnh")
+            showToast("Lỗi thực thi hệ thống")
             false
         }
     }
 
+    // Thực thi tuần tự danh sách lệnh ADB đã được định hình dạng mảng
     fun execCommands(commands: List<String>) {
         Thread {
             for (cmd in commands) {
-                execOrToast(cmd)
-                Thread.sleep(50)
+                if (cmd.isNotBlank()) {
+                    execOrToast(cmd)
+                    Thread.sleep(80) // Độ trễ nhỏ giúp hệ thống áp dụng cấu hình mượt mà hơn
+                }
             }
-            showToast("Hoàn tất tối ưu!")
+            showToast("Áp dụng lệnh hệ thống hoàn tất!")
         }.start()
     }
 
