@@ -4,6 +4,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.TextView
 import android.widget.Toast
@@ -14,7 +16,7 @@ import rikka.shizuku.Shizuku
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), Shizuku.OnRequestPermissionResultListener {
 
     private lateinit var tvShizukuStatus: TextView
     private lateinit var tvDeviceName: TextView
@@ -32,12 +34,12 @@ class MainActivity : AppCompatActivity() {
     private var gameBoosterActive = false
     private var touchLatencyActive = false
 
-    // Tạo Listener lắng nghe kết nối Binder để tránh văng ứng dụng
+    // Khai báo listener đúng chuẩn của Shizuku để theo dõi kết nối Binder
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         runOnUiThread { updateShizukuStatus() }
     }
     
-    private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { _, _ ->
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
         runOnUiThread { updateShizukuStatus() }
     }
 
@@ -60,17 +62,18 @@ class MainActivity : AppCompatActivity() {
         tvAndroidVersion.text = "Android: ${DeviceInfo.getAndroidVersion()}"
         tvVulkan.text = "Vulkan: ${if (DeviceInfo.isVulkanSupported(this)) "✅" else "❌"}"
 
-        // Kiểm tra quyền Overlay vẽ trên màn hình khác
+        // Kiểm tra quyền vẽ trên ứng dụng khác
         checkOverlayPermission()
 
-        // Lắng nghe Binder kết nối an toàn
-        Shizuku.addOnBinderReceivedListener(binderReceivedListener)
-        Shizuku.addRequestPermissionResultListener(permissionResultListener)
+        // Đăng ký lắng nghe sự kiện Binder của Shizuku để tránh lỗi văng khi chưa có Binder
+        Shizuku.addBinderReceivedListener(binderReceivedListener)
+        Shizuku.addBinderDeadListener(binderDeadListener)
+        Shizuku.addRequestPermissionResultListener(this)
 
-        // Kiểm tra trạng thái ban đầu an toàn
+        // Cập nhật trạng thái hiển thị
         updateShizukuStatus()
 
-        // Xử lý sự kiện nút bấm Game Booster
+        // Sự kiện nút bấm Game Booster
         btnGameBooster.setOnClickListener {
             if (!ensureShizukuReady()) return@setOnClickListener
             gameBoosterActive = !gameBoosterActive
@@ -83,7 +86,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý sự kiện nút bấm Touch Latency
+        // Sự kiện nút bấm Touch Latency / Thay đổi độ phân giải
         btnTouchLatency.setOnClickListener {
             if (!ensureShizukuReady()) return@setOnClickListener
             touchLatencyActive = !touchLatencyActive
@@ -93,7 +96,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 restoreOriginal()
                 btnTouchLatency.text = "TOUCH\nLATENCY"
-                Toast.makeText(this, "Đã khôi phục", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Đã khôi phục độ phân giải gốc", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -143,15 +146,18 @@ class MainActivity : AppCompatActivity() {
                 tvShizukuStatus.text = "Shizuku: ✅ Đã kết nối"
             } else {
                 tvShizukuStatus.text = "Shizuku: 🔒 Cần cấp quyền"
-                Shizuku.requestPermission(0) // Gọi yêu cầu an toàn khi Binder đã sẵn sàng
+                Shizuku.requestPermission(0)
             }
         } catch (e: Exception) {
             tvShizukuStatus.text = "Shizuku: 🔒 Đang kết nối..."
         }
     }
 
+    override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+        runOnUiThread { updateShizukuStatus() }
+    }
+
     private fun runGameBooster() {
-        // Nơi xếp các lệnh ADB dạng chuỗi cho Game Booster
         val commands = listOf(
             "settings put global window_animation_scale 0.5",
             "settings put global transition_animation_scale 0.5",
@@ -164,7 +170,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun runTouchLatencyReduction() {
-        // Chạy ngầm việc đọc thông số màn hình gốc để tránh đơ/văng UI
         Executors.newSingleThreadExecutor().submit {
             val sizeOut = shell.exec("wm size")
             val densityOut = shell.exec("wm density")
@@ -183,39 +188,37 @@ class MainActivity : AppCompatActivity() {
             originalHeight = parts[1].toInt()
             originalDensity = densityRegex.value.toInt()
 
-            // Tính toán độ phân giải mục tiêu thông minh chống màn hình đen
+            // Gọi logic tính toán độ phân giải thông minh chống vệt đen màn hình
             val target = calculateTargetResolution(originalWidth, originalHeight)
             val targetWidth = target.first
             val targetHeight = target.second
             
-            // Tính toán mật độ điểm ảnh tương ứng tỉ lệ mới
             val targetDensity = (originalDensity * targetHeight.toFloat() / originalHeight).toInt()
 
-            // KHU VỰC THÊM LỆNH SHELL ADB: Thiết lập dạng danh sách chuỗi trực quan dễ chỉnh sửa
+            // ĐỊNH DẠNG MẢNG LỆNH ADB SHELL - Bạn có thể dễ dàng thêm bớt lệnh tại đây
             val adbCommands = listOf(
                 "wm size ${targetWidth}x${targetHeight}",
                 "wm density $targetDensity"
-                // Bạn có thể xuống dòng thêm các lệnh shell khác vào đây, ví dụ:
-                // "settings put global custom_latency 1"
+                // Bạn có thể thêm lệnh shell bất kỳ xuống dưới dòng này, ví dụ:
+                // "settings put global touch_latency 0"
             )
 
-            // Tiến hành thực thi danh sách lệnh thông qua mảng tuần tự
             shell.execCommands(adbCommands)
 
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "Độ phân giải: ${targetWidth}x${targetHeight}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "Độ phân giải mới: ${targetWidth}x${targetHeight}", Toast.LENGTH_LONG).show()
                 
-                // Hộp thoại xác nhận sau 10 giây để tránh người dùng bị kẹt màn hình
-                Handler(mainLooper).postDelayed({
+                // Hộp thoại an toàn để khôi phục tránh đen hẳn màn hình nếu máy không tương thích
+                Handler(Looper.getMainLooper()).postDelayed({
                     AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Giữ độ phân giải?")
-                        .setMessage("Bạn muốn giữ cấu hình màn hình ${targetWidth}x${targetHeight} không?")
+                        .setTitle("Xác nhận độ phân giải")
+                        .setMessage("Bạn có muốn giữ cấu hình màn hình mới này không?")
                         .setPositiveButton("Hoàn tác") { _, _ ->
                             restoreOriginal()
                             touchLatencyActive = false
                             btnTouchLatency.text = "TOUCH\nLATENCY"
                         }
-                        .setNegativeButton("Giữ", null)
+                        .setNegativeButton("Giữ cấu hình", null)
                         .show()
                 }, 10000)
             }
@@ -233,34 +236,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Logic tính độ phân giải thông minh chống vệt đen màn hình (100% Anti Black-bar)
-     * Tự động đồng bộ theo tỷ lệ Aspect Ratio gốc của thiết bị
+     * Tự động tính toán độ phân giải dựa theo tỉ lệ khung hình gốc (Anti Black-Bar)
      */
     private fun calculateTargetResolution(w: Int, h: Int): Pair<Int, Int> {
-        val aspectGoc = h.toFloat() / w.toFloat() // Tỷ lệ chiều cao / chiều rộng gốc của máy
+        val aspectGoc = h.toFloat() / w.toFloat()
 
-        // TRƯỜNG HỢP 1: Chiều cao nằm trong khoảng 1600 - 1612 px (hoặc xê dịch một chút)
+        // Chiều cao gốc từ khoảng 1600 - 1612 px hoặc lân cận
         if (h in 1550..1650) {
             val targetWidth = 1336
-            // Tính chiều cao chuẩn theo tỷ lệ màn hình của máy
             var targetHeight = (targetWidth * aspectGoc).roundToInt()
-            
-            // Đảm bảo chiều cao chia hết cho 2 hoặc 4 để GPU Android không bị lỗi hiển thị nhòe
-            if (targetHeight % 2 != 0) targetHeight += 1 
+            if (targetHeight % 2 != 0) targetHeight += 1
             return Pair(targetWidth, targetHeight)
         } 
         
-        // TRƯỜNG HỢP 2: Các dòng máy có chiều cao màn hình từ 2400 px trở lên
+        // Chiều cao gốc từ 2400 px trở lên
         if (h >= 2400) {
             val targetWidth = 1500
-            // Tự động tính toán chiều cao đồng bộ chuẩn xác với tỷ lệ máy
             var targetHeight = (targetWidth * aspectGoc).roundToInt()
-            
             if (targetHeight % 2 != 0) targetHeight += 1
             return Pair(targetWidth, targetHeight)
         }
 
-        // Nếu không rơi vào các điều kiện đặc biệt trên, giảm đồng bộ về 90% độ phân giải gốc mẫu
+        // Phương án dự phòng cho các màn hình khác (giảm đều về 90% kích thước gốc)
         var fallbackWidth = (w * 0.9f).roundToInt()
         var fallbackHeight = (h * 0.9f).roundToInt()
         if (fallbackWidth % 2 != 0) fallbackWidth += 1
@@ -270,8 +267,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        Shizuku.removeOnBinderReceivedListener(binderReceivedListener)
-        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        // Hủy lắng nghe chính xác theo tên hàm của Shizuku SDK
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        Shizuku.removeRequestPermissionResultListener(this)
         super.onDestroy()
     }
 }
