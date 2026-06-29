@@ -13,9 +13,11 @@ class ShizukuShell(private val context: Context) {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    /**
-     * Thực thi lệnh shell qua Shizuku, trả về output
-     */
+    private fun isShizukuReady(): Boolean {
+        return Shizuku.pingBinder() &&
+                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    }
+
     fun exec(command: String): String {
         if (!isShizukuReady()) return ""
         return try {
@@ -25,54 +27,41 @@ class ShizukuShell(private val context: Context) {
             process.waitFor()
             output.trim()
         } catch (e: Exception) {
-            e.printStackTrace()
             ""
         }
     }
 
-    /**
-     * Thực thi lệnh và thông báo lỗi nếu có
-     */
     fun execOrToast(command: String): Boolean {
         if (!isShizukuReady()) {
-            handler.post {
-                Toast.makeText(context, "Shizuku chưa sẵn sàng", Toast.LENGTH_SHORT).show()
-            }
+            showToast("Shizuku chưa sẵn sàng")
             return false
         }
         return try {
             val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
             val exitCode = process.waitFor()
             if (exitCode != 0) {
-                handler.post {
-                    Toast.makeText(context, "Lệnh thất bại: $command", Toast.LENGTH_SHORT).show()
-                }
+                showToast("Lệnh thất bại: $command")
             }
             exitCode == 0
         } catch (e: Exception) {
-            handler.post {
-                Toast.makeText(context, "Lỗi thực thi lệnh", Toast.LENGTH_SHORT).show()
-            }
+            showToast("Lỗi thực thi lệnh")
             false
         }
     }
 
-    /**
-     * Chạy tuần tự danh sách lệnh
-     */
     fun execCommands(commands: List<String>) {
         Thread {
             for (cmd in commands) {
                 execOrToast(cmd)
                 Thread.sleep(50)
             }
-            handler.post {
-                Toast.makeText(context, "Hoàn tất tối ưu!", Toast.LENGTH_SHORT).show()
-            }
+            showToast("Hoàn tất tối ưu!")
         }.start()
     }
 
-    private fun isShizukuReady(): Boolean {
-        return Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    private fun showToast(message: String) {
+        handler.post {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 }
