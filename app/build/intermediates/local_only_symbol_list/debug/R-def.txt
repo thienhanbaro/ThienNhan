@@ -1,0 +1,24 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color dark_red
+color grey
+color red
+color white
+drawable circle_toggle
+drawable panel_bg
+drawable pill_bg_dynamic
+drawable pill_bg_grey
+id btn_game_booster
+id btn_touch_latency
+id guideline_center
+id panel_info
+id tv_android_version
+id tv_device_model
+id tv_device_name
+id tv_message
+id tv_shizuku_status
+id tv_vulkan
+layout activity_main
+layout dynamic_island
+string app_name

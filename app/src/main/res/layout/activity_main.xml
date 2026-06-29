@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tv_shizuku_status"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/pill_bg_grey"
+        android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:text="Shizuku: Checking..."
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/panel_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/panel_bg"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_shizuku_status">
+
+        <TextView
+            android:id="@+id/tv_device_name"
+            style="@style/infoText"
+            android:text="Device: ..." />
+        <TextView
+            android:id="@+id/tv_device_model"
+            style="@style/infoText"
+            android:text="ID Device: ..." />
+        <TextView
+            android:id="@+id/tv_android_version"
+            style="@style/infoText"
+            android:text="Android version: ..." />
+        <TextView
+            android:id="@+id/tv_vulkan"
+            style="@style/infoText"
+            android:text="Vulkan support: ..." />
+    </LinearLayout>
+
+    <ToggleButton
+        android:id="@+id/btn_game_booster"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/circle_toggle"
+        android:textOff="GAME\nBOOSTER"
+        android:textOn="GAME\nBOOSTER"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:gravity="center"
+        app:layout_constraintEnd_toStartOf="@id/guideline_center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/panel_info" />
+
+    <ToggleButton
+        android:id="@+id/btn_touch_latency"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/circle_toggle"
+        android:textOff="TOUCH\nLATENCY"
+        android:textOn="TOUCH\nLATENCY"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:gravity="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/guideline_center"
+        app:layout_constraintTop_toBottomOf="@id/panel_info" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

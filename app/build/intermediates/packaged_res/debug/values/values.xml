@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="dark_red">#FFB71C1C</color>
+    <color name="grey">#FF2A2A2A</color>
+    <color name="red">#FFE53935</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">Game Booster Pro</string>
+</resources>

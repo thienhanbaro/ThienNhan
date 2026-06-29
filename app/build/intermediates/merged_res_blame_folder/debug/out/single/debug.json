@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/drawable_pill_bg_grey.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/drawable/pill_bg_grey.xml"
+    },
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/layout_dynamic_island.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/layout/dynamic_island.xml"
+    },
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/drawable_panel_bg.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/drawable/panel_bg.xml"
+    },
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/layout_activity_main.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/drawable_circle_toggle.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/drawable/circle_toggle.xml"
+    },
+    {
+        "merged": "com.yourapp.gamebooster.app-merged_res-31:/drawable_pill_bg_dynamic.xml.flat",
+        "source": "com.yourapp.gamebooster.app-main-33:/drawable/pill_bg_dynamic.xml"
+    }
+]
