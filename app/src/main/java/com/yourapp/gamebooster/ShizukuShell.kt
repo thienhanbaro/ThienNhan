@@ -1,12 +1,11 @@
 package com.yourapp.gamebooster
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuApiConstants
-import rikka.shizuku.system.api.ShizukuBinder
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -15,27 +14,10 @@ class ShizukuShell(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
 
     /**
-     * Thực thi lệnh shell thông qua Shizuku Binder (cách chính thức)
+     * Thực thi lệnh shell qua Shizuku, trả về output
      */
     fun exec(command: String): String {
-        if (!Shizuku.pingBinder()) return ""
-        return try {
-            val process = Runtime.getRuntime().exec("sh") // fallback, nhưng sẽ dùng Shizuku
-            // Sử dụng ShizukuBinder để gọi IShellService
-            val binder = ShizukuBinder.getBinder()
-            // Cách đúng: gọi IShizukuService.newProcess
-            // Tuy nhiên để đơn giản và tương thích, ta dùng cách sau:
-            execWithShizukuBinder(command)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            ""
-        }
-    }
-
-    private fun execWithShizukuBinder(command: String): String {
-        // Sử dụng Shizuku.newProcess (phiên bản mới vẫn hỗ trợ nếu dùng ShizukuBinder)
-        // Nhưng đảm bảo quyền:
-        if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) return ""
+        if (!isShizukuReady()) return ""
         return try {
             val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
             val reader = BufferedReader(InputStreamReader(process.inputStream))
@@ -49,10 +31,10 @@ class ShizukuShell(private val context: Context) {
     }
 
     /**
-     * Thực thi lệnh và hiện Toast nếu lỗi
+     * Thực thi lệnh và thông báo lỗi nếu có
      */
     fun execOrToast(command: String): Boolean {
-        if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (!isShizukuReady()) {
             handler.post {
                 Toast.makeText(context, "Shizuku chưa sẵn sàng", Toast.LENGTH_SHORT).show()
             }
@@ -76,7 +58,7 @@ class ShizukuShell(private val context: Context) {
     }
 
     /**
-     * Chạy một danh sách lệnh tuần tự
+     * Chạy tuần tự danh sách lệnh
      */
     fun execCommands(commands: List<String>) {
         Thread {
@@ -88,5 +70,9 @@ class ShizukuShell(private val context: Context) {
                 Toast.makeText(context, "Hoàn tất tối ưu!", Toast.LENGTH_SHORT).show()
             }
         }.start()
+    }
+
+    private fun isShizukuReady(): Boolean {
+        return Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }
 }
