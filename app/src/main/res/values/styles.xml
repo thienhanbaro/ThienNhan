@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Theme chính -->
-    <style name="Theme.GameBooster" parent="Theme.AppCompat.NoActionBar">
+    <style name="Theme.GameBooster" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@color/black</item>
         <item name="colorPrimary">@color/red</item>
         <item name="colorPrimaryDark">@color/dark_red</item>
