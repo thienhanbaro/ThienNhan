@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Theme chính -->
-    <style name="Theme.GameBooster" parent="Theme.MaterialComponents.NoActionBar">
+    <!-- Theme an toàn, dùng AppCompat để tránh crash -->
+    <style name="Theme.GameBooster" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@color/black</item>
         <item name="colorPrimary">@color/red</item>
         <item name="colorPrimaryDark">@color/dark_red</item>
@@ -10,26 +10,10 @@
         <item name="android:navigationBarColor">@color/black</item>
     </style>
 
-    <!-- Style cho text info -->
     <style name="infoText" parent="TextAppearance.AppCompat.Body1">
         <item name="android:textColor">@color/white</item>
         <item name="android:textSize">14sp</item>
         <item name="android:layout_marginBottom">4dp</item>
         <item name="android:fontFamily">monospace</item>
     </style>
-
-    <style name="CustomToggleButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
-    <item name="android:textColor">@color/white</item>
-    <item name="android:textSize">14sp</item>
-    <item name="android:gravity">center</item>
-    <item name="android:insetTop">0dp</item>
-    <item name="android:insetBottom">0dp</item>
-    <item name="strokeColor">@color/red</item>
-    <item name="strokeWidth">2dp</item>
-    <item name="cornerRadius">20dp</item>
-    <item name="android:background">@drawable/custom_toggle_bg</item>
-    <item name="iconTint">@color/white</item>
-    <item name="android:layout_height">wrap_content</item>
-    <item name="android:minHeight">64dp</item>
-</style>
 </resources>
